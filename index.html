@@ -4,20 +4,29 @@
 <style>
 :root{--navy:#0f2742;--teal:#0e8f8a;--bg:#f6f4ef;--card:#fff;--ink:#1c2733;--mut:#5b6773;--acc:#d98a1f;--line:#dcd8cf}
 @media(prefers-color-scheme:dark){:root{--bg:#0d1824;--card:#14243a;--ink:#e9eef4;--mut:#a3b0be;--line:#2a3d57;--navy:#8fc6ff}}
-*{box-sizing:border-box}html,body{margin:0;height:100%}
+*{box-sizing:border-box}
+
+/* FIXED: Using 100dvh (dynamic viewport height) and overflow hidden prevents the cutting issue */
+html,body{margin:0;height:100vh;height:100dvh;overflow:hidden}
 body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;display:flex;flex-direction:column}
 header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 14px;background:var(--navy);color:#fff}
 @media(prefers-color-scheme:dark){header{background:#06111d}}
 header b{flex:1;font-size:.9rem;min-width:140px}
 button,select,input,textarea{font:inherit}
-button{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 12px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 12px; transition: all 0.2s;}
 button:hover{border-color:var(--teal)}button.p{background:var(--teal);color:#fff;border-color:var(--teal)}
 header button{background:transparent;color:#fff;border-color:#ffffff55}
 :focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-#prog{height:4px;background:var(--teal);width:0;transition:width .3s}
-main{flex:1;overflow:auto;padding:20px;max-width:1100px;width:100%;margin:0 auto}
-section{display:none;animation:in .35s}section.on{display:block}
-@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+#prog{height:4px;background:var(--teal);width:0;transition:width .4s ease-out}
+
+/* FIXED: Added padding-bottom to ensure the last item is never cut off */
+main{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px 20px 60px 20px;max-width:1100px;width:100%;margin:0 auto}
+
+/* Standard animation */
+section{display:none;animation:in .35s ease-out forwards}
+section.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 h1{font-size:clamp(1.8rem,5vw,3rem);color:var(--navy);margin:.2em 0}h2{color:var(--navy);margin:.2em 0}
 .sub{color:var(--mut)}.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
@@ -33,8 +42,20 @@ h1{font-size:clamp(1.8rem,5vw,3rem);color:var(--navy);margin:.2em 0}h2{color:var
 .note{font-size:.8rem;color:var(--mut)}
 nav#dots{display:flex;gap:4px;flex-wrap:wrap;padding:6px 14px;justify-content:center;background:var(--card);border-top:1px solid var(--line)}
 nav#dots button{padding:2px 8px;font-size:.78rem}nav#dots button.on{background:var(--teal);color:#fff}
-body.pm header,body.pm nav#dots{display:none}body.pm #exit{display:block}#exit{display:none;position:fixed;top:8px;right:8px;z-index:9}
-body.pm main{font-size:1.15rem}
+
+/* PRESENTATION MODE & CINEMATIC TRANSITIONS */
+body.pm header,body.pm nav#dots{display:none}
+body.pm #exit{display:block}
+#exit{display:none;position:fixed;top:8px;right:8px;z-index:9}
+body.pm main{font-size:1.15rem; padding-top: 40px;}
+body.pm section{animation:none} /* reset normal animation */
+body.pm section.on{animation: cinematic .8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards}
+
+@keyframes cinematic{
+    0% { opacity: 0; transform: scale(0.96) translateY(40px); filter: blur(8px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+
 .hero{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:center}
 input,select,textarea{padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);max-width:100%}
 a{color:var(--teal)}
@@ -93,7 +114,6 @@ function dash(){const c=ST.map((_,k)=>T.filter(t=>t.s==k).length);$('#a9').inner
 function wf(){const st=["Form received","Categorised: research request","Assigned to owner","Tracker row created","Notification drafted"];const o=$('#a10');o.innerHTML='';st.forEach((s,k)=>setTimeout(()=>{o.innerHTML+='✔ '+s+'<br>';if(k==4)o.innerHTML+='<pre>{"id":"DEMO-001","type":"briefing request","owner":"Research","status":"Open"}</pre>'},k*500))}
 
 /* ===== Slides ===== */
-/* ===== v2 technical sections ===== */
 const TABS={};
 function tabs(id,items,rend){TABS[id]=[items,rend];return `<div class="flow">${items.map((x,k)=>`<button onclick="tb('${id}',${k})">${x.t}</button>`).join('')}</div><div class="card" id="tb_${id}">Select an item.</div>`}
 function tb(id,k){const[a,r]=TABS[id];$('#tb_'+id).innerHTML=r(a[k])}
@@ -143,155 +163,35 @@ function plan(){const ch=[...document.querySelectorAll('#pick input:checked')].m
 function cp(){const t=$('#po');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>$('#cs').textContent='Copied.').catch(()=>{try{document.execCommand('copy');$('#cs').textContent='Copied (fallback).'}catch(e){$('#cs').textContent='Copy failed: press Ctrl+C.'}})}
 const PH=["Understand workflows, systems, research process, content formats, data sensitivity and priorities.","One bounded use case (e.g. summarising or repurposing one approved publication) with human approval.","Measure time, source accuracy, correction rate, staff satisfaction, accessibility, editorial quality.","Connect approved systems via APIs and n8n only where justified, with access control, logging and approval.","Document procedures, train staff, monitor, expand only if the pilot shows value."];const PHX=["Meet the team, map the workflow, find the most repetitive task, confirm data, tools and approvals, agree a baseline.","Build one limited use case with synthetic or approved data, test edge cases, gather feedback.","Run with supervision and human approval; record time, errors, completion and feedback against baseline.","Review usefulness, estimate costs and maintenance, document limits, recommend improve, expand or stop."];
 function ph(k){$('#pho').textContent=PH[k]}
-function pres(on){document.body.classList.toggle('pm',on);try{on?document.documentElement.requestFullscreen():document.fullscreenElement&&document.exitFullscreen()}catch(e){}}
-document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.key=='ArrowRight')go(i+1);if(e.key=='ArrowLeft')go(i-1);if(e.key=='Escape')pres(false)});
-calc();plan();go(0);
-</script></body></html><!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Beyond Graphics: 10 Ways AI Automation &amp; Technology Can Strengthen Research, Public Education and Organisational Impact</title>
-<style>
-:root{--navy:#0f2742;--teal:#0e8f8a;--bg:#f6f4ef;--card:#fff;--ink:#1c2733;--mut:#5b6773;--acc:#d98a1f;--line:#dcd8cf}
-@media(prefers-color-scheme:dark){:root{--bg:#0d1824;--card:#14243a;--ink:#e9eef4;--mut:#a3b0be;--line:#2a3d57;--navy:#8fc6ff}}
-*{box-sizing:border-box}html,body{margin:0;height:100%}
-body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;display:flex;flex-direction:column}
-header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 14px;background:var(--navy);color:#fff}
-@media(prefers-color-scheme:dark){header{background:#06111d}}
-header b{flex:1;font-size:.9rem;min-width:140px}
-button,select,input,textarea{font:inherit}
-button{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 12px}
-button:hover{border-color:var(--teal)}button.p{background:var(--teal);color:#fff;border-color:var(--teal)}
-header button{background:transparent;color:#fff;border-color:#ffffff55}
-:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-#prog{height:4px;background:var(--teal);width:0;transition:width .3s}
-main{flex:1;overflow:auto;padding:20px;max-width:1100px;width:100%;margin:0 auto}
-section{display:none;animation:in .35s}section.on{display:block}
-@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
-@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-h1{font-size:clamp(1.8rem,5vw,3rem);color:var(--navy);margin:.2em 0}h2{color:var(--navy);margin:.2em 0}
-.sub{color:var(--mut)}.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
-.tag{display:inline-block;font-size:.72rem;background:var(--acc);color:#fff;border-radius:99px;padding:1px 9px}
-.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
-.flow span{background:var(--navy);color:#fff;padding:4px 10px;border-radius:8px;font-size:.82rem}
-@media(prefers-color-scheme:dark){.flow span{background:#1f4a75}}
-.flow i{color:var(--teal);font-style:normal}
-.demo{border:2px dashed var(--teal);border-radius:12px;padding:14px;margin:12px 0}
-.bar{height:16px;background:var(--teal);border-radius:4px;transition:width .4s}
-.st{border-left:4px solid var(--acc)}.ok{border-color:var(--teal)}
-.note{font-size:.8rem;color:var(--mut)}
-nav#dots{display:flex;gap:4px;flex-wrap:wrap;padding:6px 14px;justify-content:center;background:var(--card);border-top:1px solid var(--line)}
-nav#dots button{padding:2px 8px;font-size:.78rem}nav#dots button.on{background:var(--teal);color:#fff}
-body.pm header,body.pm nav#dots{display:none}body.pm #exit{display:block}#exit{display:none;position:fixed;top:8px;right:8px;z-index:9}
-body.pm main{font-size:1.15rem}
-.hero{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:center}
-input,select,textarea{padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);max-width:100%}
-a{color:var(--teal)}
-</style></head><body>
-<header><b>Beyond Graphics · IRIAD &amp; The Electoral Hub</b>
-<button onclick="go(0)">Home</button><button onclick="go(3)">Contents</button><button onclick="go(i-1)">‹ Prev</button><button onclick="go(i+1)" class="p">Next ›</button><button onclick="pres(true)">Presentation mode</button></header>
-<div id="prog"></div><button id="exit" class="p" onclick="pres(false)">Exit presentation mode</button>
-<main id="m"></main><nav id="dots" aria-label="Slide navigation"></nav>
-<script>
-/* ===== Data ===== */
-const $=s=>document.querySelector(s);let i=0;
-const SRC=[["The Electoral Hub – home / who we are","https://electoralhub.org","Mission, vision, values and approach (research, documentation, policy influencing, public education, impact advocacy)."],
-["Our History","https://electoralhub.org/about-page/history/","Established 2019 as an affiliate of IRIAD."],
-["Establishment of the Gender and Inclusivity Department in INEC","https://electoralhub.org/establishmentof-the-gender-and-inclusivity-department-in-inec/","Example of a public statement/advisory the Hub published."],
-["10 Key Points from the Public Launch of The Electoral Forum (PDF)","https://electoralforum.electoralhub.org/wp-content/uploads/2024/03/10-Key-Points-from-the-Public-Launch-of-The-Electoral-Forum-1.pdf","Forum launched 31 Aug 2021, supported by OSIWA; example of event outputs."],
-["The Electoral Forum – public launch statement","https://electoralforum.electoralhub.org/?p=2422","Forum objectives; advocacy asks and infographics released as outputs."],
-["Candidate portfolio","https://agbajeautomation.me","Candidate's own work (not independently verified in this build)."],
-["Candidate project presentation","https://agbaje-automation-playbook.vercel.app/","Opened and read: a real-estate automation playbook with a fictional demo brand (HavenKey Abuja); n8n/Airtable/Gemini/Gmail demo build."],["IRIAD official site","https://iriadng.org","Programmes, publication types, mission, approach (read home page and menu)."]];
-const T=[{n:"Draft explainer on a published advisory",o:"Comms",s:0,d:"Fri"},{n:"Infographic: Forum key points",o:"Graphics",s:1,d:"Mon"},{n:"Short video script",o:"Comms",s:2,d:"Wed"},{n:"Policy brief fact-check",o:"Research",s:1,d:"Thu"},{n:"Social post batch",o:"Comms",s:3,d:"Tue"}];
-const ST=["Idea","Draft","Fact-check","Approved"];
-const PUBS=[["Establishment of the Gender and Inclusivity Department in INEC","Statement",2021,"inclusion",""],["10 Key Points from the Public Launch of The Electoral Forum","Factsheet",2021,"forum",""],["Sample: Voter education brief (fictional)","Brief",2023,"voter education","demo"],["Sample: Results transmission explainer (fictional)","Explainer",2023,"integrity",""],["Sample: Inclusion checklist (fictional)","Factsheet",2022,"inclusion","nolink"]];
-const SURV=[["The session was clear but I wanted more time for questions.","time"],["Great examples, easy to follow.","clarity"],["Materials arrived late.","logistics"],["Please share slides after the event.","materials"],["More time for questions would help.","time"],["The facilitator explained things clearly.","clarity"],["Venue was hard to find.","logistics"],["Share the infographics afterwards.","materials"],["Clear, but too rushed.","time"],["Very clear and practical.","clarity"]];
-const S10=[
-{t:"AI-Assisted Research Document Processing",g:"Reduce repetitive handling of reports and policy documents.",f:["Upload","Extract text","Draft summary","Themes","Keep source refs","Researcher verifies","Save approved"],b:"A researcher re-reads long documents to draft a first summary.",p:"The workflow extracts text and drafts a summary with page references.",h:"The researcher verifies every claim against the source; no invented quotes or citations.",r:"Faster first drafts and more consistent notes.",tools:"n8n, OCR/PDF text extraction, an approved LLM, Google Sheets/Drive",bd:"A pilot that processes one approved report into a verified summary.",c:"Policy statements such as the Hub's advisory on INEC inclusion."},
-{t:"Searchable Knowledge Assistant",g:"Help authorised staff find existing publications faster.",f:["Approved library","Index","Ask","Retrieve passages","Answer + links"],b:"Staff search folders and email for past outputs.",p:"A search layer returns passages with links to the source document.",h:"Access limited by role; staff open the source before reuse.",r:"Less time locating material.",tools:"Vector search, Supabase, n8n",bd:"A prototype over a small, approved set of public documents.",c:"Public items such as the Electoral Forum launch statement."},
-{t:"Research-to-Infographic Workflow",g:"Turn verified research into public education content.",f:["Approved finding","Key messages","Outline","Accuracy check","Design","Approval","Publish"],b:"Messages are rewritten by hand for each audience.",p:"Drafts audience-specific messages and an infographic outline.",h:"Researcher checks accuracy; comms approves. Nothing publishes automatically.",r:"Consistent drafts, more time for design.",tools:"LLM drafting, Canva/Figma, n8n approvals",bd:"A draft-and-review pipeline for one report.",c:"Forum infographics and advocacy asks."},
-{t:"Content Calendar & Approval",g:"Coordinate graphics, reports, videos and posts.",f:["Idea","Owner","Draft","Fact-check","Approval","Scheduled","Published","Review"],b:"Status is tracked in chats and ad-hoc lists.",p:"A shared board with owners, deadlines and approval gates.",h:"Named approvers sign off before anything is scheduled.",r:"Clear status and fewer missed steps.",tools:"Airtable/Notion/Sheets, n8n reminders",bd:"A board plus reminder automations.",c:"Hypothesis: multi-format publishing needs coordination."},
-{t:"Publication Discovery & Maintenance",g:"Make public resources easier to find and maintain.",f:["Metadata","Library","Filters","Link check","Flag issues","Staff approves"],b:"Visitors browse lists; staff check links by hand.",p:"Filterable library plus scheduled link/metadata checks.",h:"Staff approve changes to the site.",r:"Easier discovery, tidier archive.",tools:"React/Supabase or WordPress plugin, n8n checks",bd:"A library mock-up and checker (not a claim the site has problems).",c:"Publications, statements and factsheets on the website."},
-{t:"Event Registration & Follow-up",g:"Simplify admin for workshops and forums.",f:["Form","Validate","Confirmation","Reminder","Attendance","Feedback","Report"],b:"Registrations are copied to spreadsheets and reminders sent one by one.",p:"A workflow records registrations and prepares messages.",h:"Team approves messages and owns participant contact.",r:"Less repeated admin, steadier follow-up.",tools:"Web form, n8n, email, Sheets",bd:"A registration flow for one event.",c:"Public launches such as the Electoral Forum (31 Aug 2021)."},
-{t:"Stakeholder & Partnership Follow-up",g:"Track enquiries and outstanding actions.",f:["Enquiry","Categorise","Assign","Deadline","Reminder","Outcome"],b:"Enquiries may sit in inboxes.",p:"Each enquiry becomes an owned task with a reminder.",h:"Staff decide responses; CRM depends on existing tools.",r:"Fewer dropped follow-ups.",tools:"CRM/Sheets, n8n, email",bd:"A lightweight tracker.",c:"Hypothesis: partner and media enquiries."},
-{t:"Survey & Feedback Analysis",g:"Organise qualitative feedback into themes.",f:["Approved data","Remove personal info","Categorise","Themes","Researcher review","Draft report"],b:"Open-text comments are read and coded manually.",p:"A first-pass theme grouping with counts.",h:"Researcher reviews context and bias.",r:"Faster first pass at coding.",tools:"Python/LLM, Sheets, n8n",bd:"A theme-coding pilot on anonymised data.",c:"Workshop and training feedback."},
-{t:"Reporting & Dashboards",g:"Cut effort compiling recurring updates.",f:["Records","Validate","Metrics","Dashboard","Draft report","Manager reviews","Share"],b:"Weekly updates are compiled by hand.",p:"Metrics calculated from approved records.",h:"Manager reviews before sharing.",r:"Consistent weekly summaries.",tools:"Sheets/Supabase, Chart.js/SVG",bd:"One dashboard from one tracker.",c:"Operational tracking of content and events."},
-{t:"Internal Workflow Automation",g:"Connect tools so staff don't re-enter data.",f:["Trigger","Route","Notify","Update tracker","Reviewer acts","Record"],b:"The same details are typed into several tools.",p:"n8n connects forms, trackers and email.",h:"Humans approve; owners control permissions.",r:"Less duplicated entry.",tools:"n8n, webhooks, Google Workspace",bd:"A single connected flow, built on approved tools.",c:"Hypothesis: forms, trackers and approvals live in separate tools."}];
 
-/* ===== Demos (all simulated; synthetic data) ===== */
-const D={
-0(){return`<p class="note">Fictional excerpt. AI output is <b>simulated</b>.</p><div class="grid"><div class="card"><b>Original excerpt</b><p>“The sample commission published a revised timetable. Stakeholders raised concerns on voter registration access for persons with disabilities and requested earlier public notice.”</p></div><div class="card"><button class="p" onclick="$('#o0').hidden=false">Generate draft summary</button><div id="o0" hidden><b>AI draft (simulated)</b><p>Timetable revised; stakeholders asked for accessible registration and earlier notice.</p><p><b>Themes:</b> accessibility, notice. <b>Follow-up:</b> What notice period was given? Source: p.1 ¶1</p></div></div></div>`},
-1(){return`<select id="q1" onchange="q1()" aria-label="Question"><option value="">Choose a question…</option><option>What has the Hub said on electoral inclusion?</option><option>What was the Electoral Forum launch?</option></select><div id="a1" class="card" style="margin-top:8px">Pick a question. (Front-end simulation, no live AI.)</div>`},
-2(){return`<div class="flow"><button onclick="au('Public')">Public</button><button onclick="au('Researcher')">Researcher</button><button onclick="au('Policymaker')">Policymaker</button></div><div id="a2" class="card">Choose an audience. Finding (fictional): “Sample districts reported queue delays.”</div>`},
-3(){return`<div id="a3"></div><p class="note">Click a card to move it forward.</p>`},
-4(){return`<input id="s5" oninput="pb()" placeholder="Search topic or title" aria-label="Search"> <select id="t5" onchange="pb()"><option value="">All types</option><option>Statement</option><option>Factsheet</option><option>Brief</option><option>Explainer</option></select> <select id="y5" onchange="pb()"><option value="">All years</option><option>2021</option><option>2022</option><option>2023</option></select><div id="a5"></div>`},
-5(){return`<input id="rn" placeholder="Name (fictional)" aria-label="Name"> <input id="re" placeholder="email@example.test" aria-label="Email"> <button class="p" onclick="reg()">Submit simulated registration</button><div id="a6" class="card" style="margin-top:8px">No email is sent.</div>`},
-6(){return`<div id="a7"></div>`},
-7(){return`<button class="p" onclick="sv()">Run simulated theme analysis</button><div id="a8" class="card" style="margin-top:8px">Fictional responses; not IRIAD findings.</div>`},
-8(){return`<div id="a9"></div><span class="tag">Illustrative demo data</span><p class="note">Change statuses on slide 8 (content board); this updates live.</p>`},
-9(){return`<button class="p" onclick="wf()">Trigger simulated enquiry</button><div id="a10" class="card" style="margin-top:8px"></div>`}};
-function q1(){const v=$('#q1').value;$('#a1').innerHTML=!v?'Pick a question.':v.includes('inclusion')?'<b>Simulated answer:</b> The Hub welcomed INEC’s Gender and Inclusivity Department and earlier recommended an inclusion department.<br>Source: <a href="'+SRC[2][1]+'" target="_blank" rel="noopener">Establishment of the Gender and Inclusivity Department</a>':'<b>Simulated answer:</b> The Forum launched 31 Aug 2021 with OSIWA support.<br>Source: <a href="'+SRC[3][1]+'" target="_blank" rel="noopener">10 Key Points (PDF)</a>'}
-function au(a){const m={Public:"Plain words: Queues were long in some places. Here is what to do and where to ask.",Researcher:"Finding: queue delays reported in sample districts. Method and limits to be stated; cite source data.",Policymaker:"Implication: review staffing and timing. Options and trade-offs for decision; evidence attached."};$('#a2').innerHTML='<b>'+a+' draft (simulated)</b><p>'+m[a]+'</p><p class="note">Infographic outline: headline · 3 key facts · what you can do · source line. Requires fact-check and approval.</p>'}
-function board(){$('#a3').innerHTML='<div class="grid">'+T.map((t,k)=>`<button class="card st" onclick="T[${k}].s=(T[${k}].s+1)%4;board()"><b>${t.n}</b><br>${t.o} · due ${t.d}<br><span class="tag">${ST[t.s]}</span></button>`).join('')+'</div><p>Pending approvals: '+T.filter(t=>t.s==2).length+'</p>'}
-function pb(){const q=$('#s5').value.toLowerCase(),t=$('#t5').value,y=$('#y5').value;const r=PUBS.filter(p=>(p[0]+p[3]).toLowerCase().includes(q)&&(!t||p[1]==t)&&(!y||p[2]==y));$('#a5').innerHTML=r.map(p=>`<div class="card" style="margin:6px 0"><b>${p[0]}</b><br>${p[1]} · ${p[2]} · ${p[3]}${p[4]=='nolink'?' <span class="tag">Check: missing link</span>':''}${p[4]=='demo'?' <span class="tag">Check: missing metadata (demo)</span>':''}</div>`).join('')||'No matches.'}
-function reg(){const n=$('#rn').value||'Sample Participant',e=$('#re').value||'sample@example.test';$('#a6').innerHTML=`<b>Confirmation preview (not sent)</b><p>Dear ${n.replace(/</g,'')}, you are registered. A reminder will follow.</p><b>Record:</b> ${n.replace(/</g,'')} · ${e.replace(/</g,'')} · status: Confirmed · reminder: queued · feedback form: pending`}
-const FU=[{n:"Request for a research briefing (fictional)",s:0}],FS=["Action Required","In Progress","Completed"];
-function fu(){$('#a7').innerHTML=FU.map((f,k)=>`<div class="card st">${f.n}<br><select onchange="FU[${k}].s=this.selectedIndex;fu()" aria-label="Status">${FS.map((s,j)=>`<option${j==f.s?' selected':''}>${s}</option>`).join('')}</select><p>${f.s==2?'Outcome recorded.':'Reminder draft: “Follow up on briefing request by Friday.” (not sent)'}</p></div>`).join('')}
-function sv(){const c={};SURV.forEach(r=>c[r[1]]=(c[r[1]]||[]).concat(r[0]));$('#a8').innerHTML=Object.entries(c).map(([k,v])=>`<details><summary><b>${k}</b>: ${v.length} of ${SURV.length}</summary>${v.map(x=>'“'+x+'”').join('<br>')}</details>`).join('')+'<p class="note">Counts computed from the 10 fictional responses; a researcher must review.</p>'}
-function dash(){const c=ST.map((_,k)=>T.filter(t=>t.s==k).length);$('#a9').innerHTML=ST.map((s,k)=>`<div>${s}: ${c[k]}<div class="bar" style="width:${c[k]*20}%"></div></div>`).join('')+`<p><b>Weekly summary (draft):</b> ${T.length} items; ${c[3]} approved, ${c[2]} awaiting fact-check.</p>`}
-function wf(){const st=["Form received","Categorised: research request","Assigned to owner","Tracker row created","Notification drafted"];const o=$('#a10');o.innerHTML='';st.forEach((s,k)=>setTimeout(()=>{o.innerHTML+='✔ '+s+'<br>';if(k==4)o.innerHTML+='<pre>{"id":"DEMO-001","type":"briefing request","owner":"Research","status":"Open"}</pre>'},k*500))}
+/* ===== AUTO-SLIDE TIMER ===== */
+let autoSlideTimer = null;
 
-/* ===== Slides ===== */
-/* ===== v2 technical sections ===== */
-const TABS={};
-function tabs(id,items,rend){TABS[id]=[items,rend];return `<div class="flow">${items.map((x,k)=>`<button onclick="tb('${id}',${k})">${x.t}</button>`).join('')}</div><div class="card" id="tb_${id}">Select an item.</div>`}
-function tb(id,k){const[a,r]=TABS[id];$('#tb_'+id).innerHTML=r(a[k])}
-const CH=[["Chunk 1","The sample paper reports that accessible registration points were limited in some districts."],["Chunk 2","Respondents recommended earlier public notice of timetable changes."],["Chunk 3","The paper notes data gaps and cautions against generalising."]];
-const FI=[{f:"Accessible registration points limited in some districts",r:"Sample Paper A, chunk 1",s:0},{f:"Recommendation: earlier public notice",r:"Sample Paper A, chunk 2",s:0},{f:"Caveat: data gaps; do not generalise",r:"Sample Paper A, chunk 3",s:0}];
-const VS=["Unverified","Verified by researcher","Rejected"];
-function ev(){$('#a14').innerHTML='<b>Extracted and chunked (simulated, fictional paper)</b>'+CH.map(c=>`<div class="card" style="margin:4px 0"><b>${c[0]}</b> ${c[1]}</div>`).join('')+'<b>Evidence table</b>'+FI.map((x,k)=>`<div class="card st" style="margin:4px 0">${x.f}<br><span class="note">${x.r}</span> <button onclick="FI[${k}].s=(FI[${k}].s+1)%3;ev()">${VS[x.s]}</button></div>`).join('')+`<p class="note">Click a status to cycle it. Nothing leaves draft until a researcher verifies it.</p>`}
-function evr(){FI.forEach(x=>x.s=0);ev()}
-function kb(){const v=$('#kq').value,o=$('#ka');o.innerHTML=v==0?'<b>Grounded answer (simulated):</b> The Hub welcomed INEC’s Gender and Inclusivity Department and had earlier recommended an inclusion department.<br>Source: <a href="'+SRC[2][1]+'" target="_blank" rel="noopener">Gender and Inclusivity Department statement</a> · confidence: supported by 1 passage':v==1?'<b>Grounded answer (simulated):</b> The Electoral Forum launched 31 Aug 2021 with OSIWA support.<br>Source: <a href="'+SRC[3][1]+'" target="_blank" rel="noopener">10 Key Points (PDF)</a>':v==2?'<b>Refusal (simulated):</b> The approved library contains no passage that answers this. The assistant will not guess; it routes the question to a researcher.':'Pick a question.'}
-const VF=[{t:"Registration access (fictional finding)",sc:[["Wide shot: queue at a registration centre","A sample report found that accessible registration points were limited."],["Icon overlay: ramp, sign language, large print","Accessibility matters for every eligible voter."],["Text card: the recommendation","The report recommends earlier public notice."],["Source card: report title, where to ask","Read the full report at the source."]]},{t:"Timetable notice (fictional finding)",sc:[["Calendar graphic with a changed date","A sample timetable changed."],["Phone with a notice banner","People need notice in time to act."],["Text card: recommendation","The report recommends earlier public notice."],["Source card","Check the official source."]]}];
-function sb(){const f=VF[$('#vf').value],n=$('#vd').value==30?3:4,s=f.sc.slice(0,n);$('#a16').innerHTML=`<b>${f.t}: ${$('#vd').value}s storyboard (draft)</b><table style="width:100%;border-collapse:collapse">${s.map((x,k)=>`<tr><td><b>Scene ${k+1}</b></td><td>${x[0]}</td><td>VO/caption: “${x[1]}”</td></tr>`).join('')}</table><p>Simplified-language version: same facts, shorter sentences.<br>Translation draft: <b>requires native-speaker review</b>.<br>Video generation: <b>SIMULATED, not connected</b>. Editorial status: <span class="tag">Pending approval</span></p>`}
-const PN=[{t:"1 Trigger",d:"Webhook or manual trigger receives the approved report ID. Retries: 3 with back-off. Log every run."},{t:"2 Extract",d:"PDF/Word text extraction stored with the document version."},{t:"3 LLM draft",d:"Structured JSON output (summary, key messages, outline, source passages). Schema-validated; invalid output retried then flagged."},{t:"4 Fact check",d:"Each claim must map to a source passage; unmatched claims flagged for the researcher."},{t:"5 Approval",d:"Editorial approver signs off in a form; rejection returns the draft with comments."},{t:"6 Schedule",d:"Approved items added to the content calendar via API."},{t:"7 Publication record",d:"Who approved, when, source version, channel: stored for audit."},{t:"8 Reporting",d:"Weekly performance and status report drafted for a manager. Proposed integrations: not connected."}];
-const IN=["Problem identification","Evidence gathering","Stakeholder feedback","Opportunity analysis","Idea generation","Prototype","User testing","Improvement","Impact measurement"].map((t,k)=>({t:(k+1)+" "+t,d:["Start with a real staff or community need, not a tool.","AI helps summarise approved evidence; humans verify.","Collect feedback from the people who will use it.","Compare options against need, risk and effort.","AI helps brainstorm; the team chooses.","AI-assisted coding or low-code builds a small prototype (e.g. a searchable policy resource).","Test with real users; record problems.","Fix and retest.","Measure against the baseline; stop if not useful."][k]}));
-const AR=[{t:"1 Research RAG",x:["Approved PDF/Word report","Text extraction, cleaning, chunking, embeddings, LLM","Document store + vector index","Embedding/LLM API (proposed)","Researcher verifies claims and citations","Cited findings, evidence table","Extraction errors flagged; confidential docs stay in approved storage"]},{t:"2 Research-to-video",x:["Verified finding","Script, storyboard, captions","Asset library","Video/voice generation service (proposed)","Editorial and accessibility approval","Approved clip and captions","Reject synthetic media that could mislead; disclose AI use"]},{t:"3 Feedback to dashboard",x:["Event or feedback form","Validation, anonymisation, n8n workflow, theme analysis","Spreadsheet/database","Email, form tool (existing tools to be confirmed)","Staff review themes before reporting","Staff dashboard, follow-up tasks","Retries, error alerts, data minimisation, role-based access"]}];
-const ARL=["Inputs","Processing","Storage","External services/APIs","Human approval","Outputs","Failure and privacy safeguards"];
-function pr(w){$('#a20').innerHTML=w?'<b>Weak prompt:</b> “Summarise this report.”<p>Likely issues: no audience, no source rules, may add unsupported claims.</p>':'<b>Stronger prompt:</b> “Using ONLY the attached text, list the three main recommendations with page references. Quote nothing you cannot find. If unsure, say so. Audience: policy staff.”<p>Better: bounded, checkable. It does not guarantee correctness; verify every claim.</p>'}
-const TL=["RAG evidence synthesis","Knowledge assistant","Civic video","Publication pipeline","Innovation cycle","Architecture","AI literacy training"].map((x,k)=>`<button onclick="go(${14+k})">${x}</button>`).join(' ');
+function pres(on){
+  document.body.classList.toggle('pm',on);
+  if (on) {
+    try { document.documentElement.requestFullscreen(); } catch (e) {}
+    // Clear any existing timer first
+    clearInterval(autoSlideTimer);
+    // Automatically switch slide every 6 seconds
+    autoSlideTimer = setInterval(() => {
+        go((i + 1) % el.length);
+    }, 6000);
+  } else {
+    try { document.fullscreenElement && document.exitFullscreen(); } catch(e) {}
+    // Stop auto sliding
+    clearInterval(autoSlideTimer);
+  }
+}
 
-const sec=(h,b)=>`<section>${h}${b}</section>`;
-function sol(k){const s=S10[k];return sec(`<span class="tag">Solution ${k+1} of 10</span><h2>${s.t}</h2><p class="sub">${s.g}</p><div class="flow">${s.f.map((x,j)=>(j?'<i>→</i>':'')+'<span>'+x+'</span>').join('')}</div>`,
-`<div class="demo"><b>Try it (simulation)</b><div>${D[k]()}</div></div><div class="grid"><div class="card"><b>Before</b> (hypothetical)<br>${s.b}</div><div class="card"><b>Proposed</b><br>${s.p}</div><div class="card"><b>Human responsibility</b><br>${s.h}</div><div class="card"><b>Possible result</b><br>${s.r}</div></div><p class="note"><b>Grounding:</b> ${s.c} <b>Tools:</b> ${s.tools}. <b>Could build/pilot:</b> ${s.bd}</p><button onclick="go(3)">Back to overview</button>`)}
-const slides=[
-sec(`<div class="hero"><div><h1>Beyond Graphics. Beyond Manual Work.</h1><p>How AI automation and digital technology could help IRIAD and The Electoral Hub strengthen research, public education and operational efficiency.</p><p><b>Agbaje Olarewaju</b><br>AI Automation Specialist · Technology &amp; Digital Solutions · Website Development</p><button class="p" onclick="go(1)">Start Presentation</button> <button onclick="go(3)">Explore the 10 Solutions</button></div><svg viewBox="0 0 300 200" role="img" aria-label="Documents, people and public information connected by lines"><g stroke="#0e8f8a" stroke-width="2" fill="none"><path d="M60 60L150 100L240 60M60 140L150 100L240 140"/></g><g fill="#0f2742"><rect x="40" y="40" width="40" height="40" rx="4"/><circle cx="150" cy="100" r="22" fill="#0e8f8a"/><circle cx="240" cy="60" r="18"/><rect x="220" y="120" width="40" height="40" rx="4"/><circle cx="60" cy="140" r="18"/></g><g fill="#fff" font-size="9" text-anchor="middle"><text x="60" y="64">Docs</text><text x="150" y="103">Tech</text><text x="240" y="64">People</text><text x="240" y="144">Impact</text><text x="60" y="143">Data</text></g></svg></div>`,''),
-sec(`<h2>Understanding the Organisation</h2>`,`<div class="grid"><div class="card"><b>Who</b><br>The Electoral Hub is an affiliate of IRIAD (Initiative for Research, Innovation and Advocacy in Development), established in 2019, working on electoral governance and accountability in Nigeria.</div><div class="card"><b>Approach (published)</b><br>Research · Documentation · Policy informing and influencing · Public education · Impact advocacy.</div><div class="card"><b>Examples</b><br>Public advisories on INEC, and The Electoral Forum (launched 31 Aug 2021 with OSIWA support).</div></div><p class="note">Facts are from official pages (see Sources). This presentation does not imply the candidate works for or represents the organisation. IRIAD (iriadng.org) lists programmes including Democracy, Elections &amp; Governance, Technology, Digital Rights &amp; Governance, and publications such as briefing papers, research papers, factsheets and infographics. The Hub site is electoralhub.org.</p><p><a href="https://electoralhub.org" target="_blank" rel="noopener">electoralhub.org</a> · <a href="${SRC[3][1]}" target="_blank" rel="noopener">Forum launch PDF</a></p>`),
-sec(`<h2>The Opportunity</h2><p class="sub">Click a stage. These are hypotheses to discuss, not claims about current shortcomings.</p>`,`<div class="flow" id="stg">${["Research","Analysis","Verification","Communication","Public Engagement","Learning"].map((x,k)=>`<button onclick="stg(${k})">${x}</button>`).join('')}</div><div class="card" id="so">Select a stage.</div>`),
-sec(`<h2>The 10 Solutions</h2><p class="sub">Select one to open its demonstration.</p><p>Technical deep-dives: ${TL}</p>`,`<div class="grid">${S10.map((s,k)=>`<button class="card" onclick="go(${4+k})"><b>${k+1}. ${s.t}</b><br><span class="note">${s.g}</span></button>`).join('')}</div>`),
-...S10.map((_,k)=>sol(k)),
-sec(`<h2>A. LLM-Assisted Research &amp; Evidence Synthesis</h2><p class="sub">Collect → extract → clean → summarise/compare → link to sources → draft → researcher verifies</p>`,`<div class="grid"><div class="card"><b>Ordinary prompting</b><br>The model answers from general training. Cannot point to your documents.</div><div class="card"><b>RAG</b><br>Documents are split into chunks, the most relevant chunks are retrieved for a question, and the model answers from them with source references. Useful for approved internal libraries; still needs verification.</div></div><div class="demo"><b>Try it (simulation, fictional paper)</b><br><button class="p" onclick="ev()">Extract and analyse</button> <button onclick="evr()">Reset</button><div id="a14"></div></div>`),
-sec(`<h2>B. Institutional Knowledge Assistant</h2><p class="sub">Ingest → extract → chunk → embed → vector search → LLM → access controls</p>`,`<div class="demo"><select id="kq" onchange="kb()" aria-label="Question"><option value="">Choose a question…</option><option value="0">What has the Hub said on electoral inclusion?</option><option value="1">What was the Electoral Forum launch?</option><option value="2">How many staff does the Hub employ?</option></select><div id="ka" class="card" style="margin-top:8px">Simulation, no live AI. The last question shows a refusal.</div></div><p class="note">Also needed: permissions per document, version control, privacy review, and evaluation with known test questions.</p>`),
-sec(`<h2>C. AI Video &amp; Multimedia for Civic Education</h2><p class="sub">Verified finding → script → storyboard → production → editorial review → publication</p>`,`<div class="demo"><select id="vf" aria-label="Finding">${VF.map((f,k)=>`<option value="${k}">${f.t}</option>`).join('')}</select> <select id="vd" aria-label="Length"><option>30</option><option>60</option></select> <button class="p" onclick="sb()">Generate storyboard (simulated)</button> <button onclick="$('#a16').innerHTML=''">Reset</button><div id="a16"></div></div><div class="card st"><b>Value:</b> can make complex issues easier to understand and create reusable assets. <b>Limits:</b> generation cost, inaccurate visuals, deepfakes and synthetic voices, political sensitivity, consent, translation quality, accessibility. Reach and engagement are not guaranteed. Human review is required.</div>`),
-sec(`<h2>D. Research-to-Publication Automation (n8n, proposed)</h2>`,`<p class="note">Report → extraction → LLM drafts → checks → approval → schedule → record → reporting. Nothing here is connected to the organisation's systems.</p>${tabs('pn',PN,x=>`<b>${x.t}</b><p>${x.d}</p>`)}`),
-sec(`<h2>E. AI for Initiative, Innovation &amp; Development</h2><p class="sub">Staff and community needs decide what gets built; AI supports the cycle.</p>`,tabs('in',IN,x=>`<b>${x.t}</b><p>${x.d}</p>`)),
-sec(`<h2>Technical Architecture</h2><p class="sub">Proposed designs, not working connections.</p>`,tabs('ar',AR,x=>ARL.map((l,k)=>`<p><b>${l}:</b> ${x.x[k]}</p>`).join(''))+'<p class="note">System 3 also covers stakeholder feedback analysis (F) and the reporting dashboard (G).</p>'),
-sec(`<h2>Staff Training &amp; AI Literacy</h2><p class="sub">Research planning, document analysis, prompting, drafting, data interpretation, audience adaptation, prototyping, fact-checking, confidentiality, spotting hallucinations and bias. Goal: capability and judgement, not dependence.</p>`,`<div class="demo"><button onclick="pr(true)">Weak prompt</button> <button class="p" onclick="pr(false)">Evidence-constrained prompt</button><div id="a20" class="card" style="margin-top:8px">Compare the two.</div></div><div class="card"><b>About my work:</b> the verified playbook (agbaje-automation-playbook.vercel.app) is a real-estate demonstration (fictional HavenKey brand) using n8n, Airtable, Gemini and Gmail. It is previous demo work, not an IRIAD deployment.</div>`),
-sec(`<h2>Automate the Repetitive Work. Keep Human Judgement in Control.</h2>`,`<div class="grid">${["Human verification of factual claims","Source links and traceability","Protect confidential documents","Careful handling of personal information","Role-based access","Approval before public publication","Review of AI summaries","Testing before deployment","Monitoring and error handling","A way to correct inaccurate outputs","Disclose synthetic media that could mislead","Bias and accessibility review","Consent and data minimisation","No claims about voter behaviour without a lawful, ethical basis","Clear accountability for final decisions"].map(x=>`<div class="card ok st">✔ ${x}</div>`).join('')}</div><p>Election information is never published automatically. Systems support nonpartisan, evidence-based education. No confidential documents go to third-party AI without explicit authorisation.</p>`),
-sec(`<h2>Value, Reflection &amp; Pilot Planner</h2>`,`<div class="grid"><div class="card"><b>Illustrative time calculator</b><br>Tasks/week <input id="c1" type="number" value="10" min="0" style="width:70px" oninput="calc()"><br>Manual minutes/task <input id="c2" type="number" value="30" min="0" style="width:70px" oninput="calc()"><br>% automatable <input id="c3" type="number" value="40" min="0" max="100" style="width:70px" oninput="calc()"><p id="co"></p><p class="note">Illustrative only. Must be validated in a pilot, including review and maintenance time.</p></div><div class="card"><b>Which workflow would create the greatest value? (max 3)</b><div id="pick">${S10.map((s,k)=>`<label style="display:block"><input type="checkbox" value="${k}" onchange="pick(this)"> ${s.t}</label>`).join('')}</div></div><div class="card"><b>Pilot planner</b><br><select id="p1"><option>Research summaries</option><option>Event administration</option><option>Content approvals</option><option>Research-to-video repurposing</option><option>Knowledge assistant</option></select><br><select id="p2"><option>Research team</option><option>Communications team</option><option>Programme staff</option></select><br><select id="p3"><option>One report</option><option>One event</option><option>One month of content</option></select><br><select id="p4"><option>Time to first draft</option><option>Review corrections</option><option>Tasks on schedule</option></select><br><select id="p5" aria-label="Effort"><option>Effort: low</option><option>Effort: medium</option><option>Effort: high</option></select><br><button class="p" onclick="plan()">Generate outline</button><textarea id="po" rows="7" style="width:100%" aria-label="Pilot outline"></textarea><button onclick="cp()">Copy to clipboard</button> <span id="cs" class="note"></span></div></div>`),
-sec(`<h2>Start Small. Solve a Real Problem. Measure the Impact.</h2>`,`<div class="flow">${["1 Discovery","2 Controlled pilot","3 Evaluate","4 Integrate","5 Scale responsibly"].map((x,k)=>`<button onclick="ph(${k})">${x}</button>`).join('')}</div><div class="card" id="pho">Select a phase.</div><h3>Proposed first pilot: AI-Assisted Research-to-Public-Education Workflow</h3><div class="flow">${["One approved report","Extract findings","Draft summary + outline","Keep source links","Researcher verifies","Comms reviews","Record approval"].map((x,j)=>(j?'<i>→</i>':'')+'<span>'+x+'</span>').join('')}</div><p>Success measures (no results pre-filled): time to first draft · review corrections · time to find sources · tasks on schedule · staff feedback. Risks: errors, confidentiality, over-reliance; safeguards: human approval and source traceability. <b>This is a proposal requiring team input.</b></p>`),
-sec(`<h2>Closing &amp; Sources</h2>`,`<blockquote>I see technology as a way to help people do meaningful work more effectively. My goal is to understand your processes, identify practical opportunities, and build solutions that improve research, communication and organisational efficiency without compromising accuracy or human judgement.</blockquote><p><b>Agbaje Olarewaju</b> · <a href="https://agbajeautomation.me" target="_blank" rel="noopener">Portfolio</a> · <a href="https://agbaje-automation-playbook.vercel.app/" target="_blank" rel="noopener">Project presentation</a></p><button class="p" onclick="go(3)">Back to the ten solutions</button><h3>Sources (official unless noted)</h3>${SRC.map(s=>`<p><a href="${s[1]}" target="_blank" rel="noopener">${s[0]}</a><br><span class="note">${s[2]}</span></p>`).join('')}`)];
-$('#m').innerHTML=slides.join('');const el=[...document.querySelectorAll('section')];
-$('#dots').innerHTML=el.map((_,k)=>`<button onclick="go(${k})" aria-label="Slide ${k+1}">${k+1}</button>`).join('');
-function go(n){i=Math.max(0,Math.min(el.length-1,n));el.forEach((e,k)=>e.classList.toggle('on',k==i));document.querySelectorAll('#dots button').forEach((b,k)=>b.classList.toggle('on',k==i));$('#prog').style.width=(i+1)/el.length*100+'%';$('#m').scrollTop=0;if(i==7)board();if(i==8)pb();if(i==10)fu();if(i==12)dash()}
-const OPP=["Documents arrive and are filed: possible text extraction and tagging.","Analysis: draft summaries and theme grouping for researcher review.","Verification: source-link tracking and checklists.","Communication: audience-specific drafts, approval boards.","Engagement: registration, reminders, follow-up.","Learning: feedback themes and dashboards."];
-function stg(k){$('#so').textContent=OPP[k]}
-function calc(){const h=$('#c1').value*$('#c2').value*$('#c3').value/6000;$('#co').innerHTML='Illustrative potential: <b>'+h.toFixed(1)+' hours/week</b> before review and maintenance.'}
-function pick(c){if(document.querySelectorAll('#pick input:checked').length>3){c.checked=false}}
-function plan(){const ch=[...document.querySelectorAll('#pick input:checked')].map(x=>S10[x.value].t).join('; ')||'(none selected)';$('#po').value=`PILOT OUTLINE (draft proposal, needs team input)\nProblem area: ${$('#p1').value}\nUsers: ${$('#p2').value}\nScope: ${$('#p3').value}\nExpected effort: ${$('#p5').value}\nSuccess indicator: ${$('#p4').value} (baseline to be recorded)\nPriority workflows chosen: ${ch}\nSafeguards: human review, source links, approval before publication.`}
-function cp(){const t=$('#po');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>$('#cs').textContent='Copied.').catch(()=>{try{document.execCommand('copy');$('#cs').textContent='Copied (fallback).'}catch(e){$('#cs').textContent='Copy failed: press Ctrl+C.'}})}
-const PH=["Understand workflows, systems, research process, content formats, data sensitivity and priorities.","One bounded use case (e.g. summarising or repurposing one approved publication) with human approval.","Measure time, source accuracy, correction rate, staff satisfaction, accessibility, editorial quality.","Connect approved systems via APIs and n8n only where justified, with access control, logging and approval.","Document procedures, train staff, monitor, expand only if the pilot shows value."];const PHX=["Meet the team, map the workflow, find the most repetitive task, confirm data, tools and approvals, agree a baseline.","Build one limited use case with synthetic or approved data, test edge cases, gather feedback.","Run with supervision and human approval; record time, errors, completion and feedback against baseline.","Review usefulness, estimate costs and maintenance, document limits, recommend improve, expand or stop."];
-function ph(k){$('#pho').textContent=PH[k]}
-function pres(on){document.body.classList.toggle('pm',on);try{on?document.documentElement.requestFullscreen():document.fullscreenElement&&document.exitFullscreen()}catch(e){}}
+// Ensure timer stops if user uses ESC key to exit fullscreen
+document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) {
+        document.body.classList.remove('pm');
+        clearInterval(autoSlideTimer);
+    }
+});
+
 document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.key=='ArrowRight')go(i+1);if(e.key=='ArrowLeft')go(i-1);if(e.key=='Escape')pres(false)});
 calc();plan();go(0);
 </script></body></html>
